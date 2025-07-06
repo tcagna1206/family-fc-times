@@ -1,0 +1,194 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Family FC: Escolha de Times</title>
+    <meta charset="UTF-8" />
+    <script defer src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script defer src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      body { font-family: sans-serif; padding: 20px; background: #f9fafb; }
+      .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+      button { padding: 10px 16px; margin: 6px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; background: #e5e7eb; }
+      button:hover { background: #d1d5db; }
+      .selected { background-color: #f87171 !important; }
+      input { width: 100%; margin-bottom: 8px; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+      h1, h2 { margin-bottom: 12px; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+
+const defaultPlayers = [
+  "Edu B", "Thiago C", "Gabriel", "Sandro", "Ian", "Joãozin", "Rodrigo", "Edu M", "Wesley", "Pedro", "Gui", "Tutu", "David", "Tiago", "Jeff", "Marcelo", "Juninho", "Maikel"
+];
+
+function App() {
+  const [custom, setCustom] = React.useState(["", "", "", "", ""]);
+  const [players, setPlayers] = React.useState([]);
+  const [filtered, setFiltered] = React.useState([]);
+  const [step, setStep] = React.useState("selectNumber");
+  const [numPlayers, setNumPlayers] = React.useState(null);
+  const [captains, setCaptains] = React.useState([]);
+  const [order, setOrder] = React.useState([]);
+  const [picks, setPicks] = React.useState([]);
+
+  const sequence = [0,1,2,2,1,0,0,1,2,2,1,0]; // Suporta 3 times
+
+  const handleCustomConfirm = () => {
+    const cleaned = custom.map(c => c.trim()).filter(Boolean);
+    setPlayers([...defaultPlayers, ...cleaned]);
+    setStep("filter");
+  };
+
+  const toggleFilter = (name) => {
+    setFiltered(prev =>
+      prev.includes(name) ? prev.filter(p => p !== name) : [...prev, name]
+    );
+  };
+
+  const confirmFiltered = () => {
+    const remaining = players.filter(p => !filtered.includes(p));
+    if (remaining.length !== numPlayers) {
+      alert(`Você deve manter exatamente ${numPlayers} jogadores.`);
+      return;
+    }
+    setPlayers(remaining);
+    setStep("captains");
+  };
+
+  const pickCaptain = (name) => {
+    const updated = [...captains, name];
+    setCaptains(updated);
+    setPlayers(players.filter(p => p !== name));
+    if (updated.length === 3) {
+      setOrder([...updated].sort(() => Math.random() - 0.5));
+      setStep("pick");
+    }
+  };
+
+  const pickPlayer = (name) => {
+    const currentCaptain = order[sequence[picks.length]];
+    setPicks([...picks, { captain: currentCaptain, player: name }]);
+    setPlayers(players.filter(p => p !== name));
+  };
+
+  const reset = () => {
+    setCustom(["", "", "", "", ""]);
+    setPlayers([]);
+    setFiltered([]);
+    setCaptains([]);
+    setOrder([]);
+    setPicks([]);
+    setNumPlayers(null);
+    setStep("selectNumber");
+  };
+
+  const teams = picks.reduce((acc, { captain, player }) => {
+    acc[captain] = acc[captain] || [];
+    acc[captain].push(player);
+    return acc;
+  }, {});
+
+  const currentCaptain = order[sequence[picks.length]];
+
+  return (
+    <div>
+      <h1>Family FC: Escolha de Times</h1>
+      <button onClick={reset} style={{background: "#dc2626", color: "#fff"}}>Reiniciar</button>
+
+      {step === "selectNumber" && (
+        <div className="card">
+          <h2>Quantos jogadores vão jogar hoje?</h2>
+          {[12, 13, 14, 15].map(num => (
+            <button key={num} onClick={() => { setNumPlayers(num); setStep("confirmAddExtra"); }}>
+              {num} jogadores
+            </button>
+          ))}
+        </div>
+      )}
+
+      
+      {step === "confirmAddExtra" && (
+        <div className="card">
+          <h2>Jogadores disponíveis:</h2>
+          <ul>
+            {defaultPlayers.map(p => <li key={p}>{p}</li>)}
+          </ul>
+          <h3>Precisa adicionar mais alguém?</h3>
+          <button onClick={() => setStep("add")}>Sim</button>
+          <button onClick={() => {
+            setPlayers(defaultPlayers);
+            setStep("filter");
+          }}>Não</button>
+        </div>
+      )}
+
+
+{step === "add" && (
+        <div className="card">
+          <h2>Jogadores adicionais (opcional)</h2>
+          {custom.map((name, i) => (
+            <input key={i} value={name} placeholder={`Novo jogador ${i+1}`} onChange={e => {
+              const copy = [...custom];
+              copy[i] = e.target.value;
+              setCustom(copy);
+            }} />
+          ))}
+          <button onClick={handleCustomConfirm}>Continuar</button>
+        </div>
+      )}
+
+      {step === "filter" && (
+        <div className="card">
+          <h2>Remova até restarem {numPlayers} jogadores</h2>
+          {players.map(p => (
+            <button key={p} onClick={() => toggleFilter(p)} className={filtered.includes(p) ? 'selected' : ''}>
+              {p}
+            </button>
+          ))}
+          <div><button onClick={confirmFiltered}>Confirmar lista com {numPlayers}</button></div>
+        </div>
+      )}
+
+      {step === "captains" && (
+        <div className="card">
+          <h2>Escolha 3 capitães</h2>
+          {players.map(p => (
+            <button key={p} onClick={() => pickCaptain(p)}>{p}</button>
+          ))}
+        </div>
+      )}
+
+      {step === "pick" && picks.length < sequence.length && (
+        <div className="card">
+          <h2>{currentCaptain} escolhe:</h2>
+          {players.map(p => (
+            <button key={p} onClick={() => pickPlayer(p)}>{p}</button>
+          ))}
+        </div>
+      )}
+
+      {step === "pick" && players.length === 0 && (
+        <div className="card">
+          <h2>Times finalizados</h2>
+          {order.map(captain => (
+            <div key={captain}>
+              <h3>Time de {captain}</h3>
+              <ul>
+                {teams[captain]?.map(p => <li key={p}>{p}</li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script></script>
+  </body>
+</html>
